@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  priceCents  Int
+  currency    String   @default("COP")
+  stock       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions Transaction[]
+  movements    InventoryMovement[]
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  fullName  String
+  email     String   @unique
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries   Delivery[]
+  transactions Transaction[]
+}
+
+model Delivery {
+  id               String   @id @default(uuid())
+  customerId       String
+  addressLine      String
+  city             String
+  state            String?
+  country          String
+  notes            String?
+  deliveryFeeCents Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  transaction Transaction? @relation("DeliveryTransaction")
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  ERROR
+}
+
+model Transaction {
+  id                 String            @id @default(uuid())
+  status             TransactionStatus @default(PENDING)
+
+  productId          String
+  customerId         String
+  deliveryId         String?           @unique
+
+  amountProductCents Int
+  baseFeeCents       Int
+  deliveryFeeCents   Int
+  totalCents         Int
+
+  providerReference  String?
+  failureReason      String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  product   Product  @relation(fields: [productId], references: [id])
+  customer  Customer @relation(fields: [customerId], references: [id])
+  delivery  Delivery? @relation("DeliveryTransaction", fields: [deliveryId], references: [id])
+
+  movements InventoryMovement[]
+}
+
+model InventoryMovement {
+  id            String   @id @default(uuid())
+  productId     String
+  transactionId String
+  qtyDelta      Int
+  reason        String
+  createdAt     DateTime @default(now())
+
+  product     Product     @relation(fields: [productId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+}
